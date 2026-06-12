@@ -1,0 +1,36 @@
+{
+  "name": "novae-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend for Novae Universe",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js",
+    "test": "node --test",
+    "migrate:up": "node scripts/migrate.js up",
+    "migrate:down": "node scripts/migrate.js down",
+    "migrate:redo": "node scripts/migrate.js redo",
+    "migrate:status": "node scripts/migrate.js status",
+    "migrate:create": "node scripts/migrate.js create",
+    "db:reset": "node scripts/migrate.js reset",
+    "db:fresh": "node scripts/dropAll.js && npm run migrate:up"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/jwt": "^10.1.0",
+    "@fastify/rate-limit": "^11.0.0",
+    "@supabase/supabase-js": "^2",
+    "dotenv": "^16",
+    "fastify": "^5.8.5",
+    "node-fetch": "^3",
+    "node-pg-migrate": "^8.0.4",
+    "pg": "^8.21.0"
+  }
+}

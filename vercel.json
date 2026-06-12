@@ -1,6 +1,6 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "env": {
-    "VITE_API_URL": "@devuniverse_api_url"
+    "NOVAE_API_URL": "@novae_api_url"
   }
 }
