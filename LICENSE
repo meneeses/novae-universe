@@ -2,22 +2,56 @@ Novae Universe License v1.0
 
 Copyright (c) 2024 João Meneses
 
-Permission is hereby granted to any person to view, fork, and contribute
-to this software solely via pull requests submitted to the official
-repository at github.com/meneeses/novae-universe.
+---
 
-All accepted contributions become property of the original author
-under this license, with no rights retained by the contributor.
+Plain-language summary (not a substitute for the terms below):
 
-The following are strictly prohibited without explicit written
-permission from the copyright holder:
+You may view this repository, fork it, and submit pull requests to the
+official repo at github.com/meneeses/novae-universe. Accepted contributions
+become property of the copyright holder.
 
-- Commercial use of this software or any derivative work
-- Redistribution of this software or any derivative work
-- Hosting a public or private instance of this software
-- Using this software or any part of it in another product or service
-- Removing or altering this license notice
+You may not use, host, redistribute, or sell this software — or any derivative
+work — without explicit written permission from the copyright holder.
 
-This software is provided "as is", without warranty of any kind.
+For commercial licensing: meneses-joao@hotmail.com
 
-For commercial licensing inquiries, contact: meneses-joao@hotmail.com
+---
+
+1. Permissions
+
+   Permission is granted to any person to:
+
+   - View the source code in this repository
+   - Fork this repository for the purpose of proposing changes
+   - Contribute solely via pull requests submitted to the official repository
+     at github.com/meneeses/novae-universe
+
+2. Contributions
+
+   All contributions accepted and merged into the official repository become
+   the exclusive property of the copyright holder under this license, with no
+   rights retained by the contributor.
+
+   By submitting a pull request, you confirm that you have the right to make
+   the contribution and agree to these terms.
+
+3. Restrictions
+
+   The following are strictly prohibited without explicit written permission
+   from the copyright holder:
+
+   - Commercial use of this software or any derivative work
+   - Redistribution of this software or any derivative work
+   - Hosting a public or private instance of this software
+   - Using this software or any part of it in another product or service
+   - Removing or altering this license notice
+
+4. Disclaimer
+
+   This software is provided "as is", without warranty of any kind, express
+   or implied, including but not limited to the warranties of merchantability,
+   fitness for a particular purpose, and noninfringement.
+
+5. Contact
+
+   For commercial licensing inquiries: meneses-joao@hotmail.com
