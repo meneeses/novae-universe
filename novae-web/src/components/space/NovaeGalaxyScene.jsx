@@ -195,7 +195,7 @@ function SceneContent({
   )
 }
 
-export function NovaeGalaxyScene({ login }) {
+export function NovaeGalaxyScene() {
   const stars = useNovaeStore((state) => state.novaeStars)
   const currentUser = useNovaeStore((state) => state.currentUser)
   const galaxyMode = useNovaeStore((state) => state.galaxyMode)
@@ -346,7 +346,6 @@ export function NovaeGalaxyScene({ login }) {
         isBoosting={flight.isBoosting}
         isBraking={flight.isBraking}
         isGuest={isGuest}
-        login={login}
         galaxyMode={galaxyMode}
         activeNovaeStarUsername={activeNovaeStarUsername}
         dimension={dimension}

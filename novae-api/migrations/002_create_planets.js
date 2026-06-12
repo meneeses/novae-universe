@@ -9,23 +9,19 @@ export const up = (pgm) => {
       type: 'uuid',
       notNull: true,
       references: '"novae_stars"',
-      onDelete: 'CASCADE'
+      onDelete: 'cascade'
     },
     github_username: { type: 'text', notNull: true },
     repo_name: { type: 'text', notNull: true },
-    repo_full_name: { type: 'text', notNull: true, unique: true },
+    repo_full_name: { type: 'text', notNull: true },
     description: { type: 'text' },
     language: { type: 'text' },
-    html_url: { type: 'text' },
+    html_url: { type: 'text', notNull: true },
     commit_count: { type: 'integer', default: 0 },
     stars_count: { type: 'integer', default: 0 },
     forks_count: { type: 'integer', default: 0 },
-    contributor_count: { type: 'integer', default: 1 },
-    world_type: {
-      type: 'text',
-      notNull: true,
-      check: "world_type IN ('asteroid','dwarf','rocky','large','ringed','gaseous','giant')"
-    },
+    contributor_count: { type: 'integer', default: 0 },
+    world_type: { type: 'text', default: "'planet'" },
     orbit_radius: { type: 'float', notNull: true },
     orbit_speed: { type: 'float', notNull: true },
     orbit_offset: { type: 'float', notNull: true },
@@ -40,5 +36,5 @@ export const up = (pgm) => {
 }
 
 export const down = (pgm) => {
-  pgm.dropTable('novae_worlds')
+  pgm.dropTable('novae_worlds', { cascade: true })
 }

@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { NovaeLandingUI } from './NovaeLandingUI'
 import { NovaeLandingUniverse } from './NovaeLandingUniverse'
 
-export function NovaeLanding({ login, explore, error, isLoading, onLaunch }) {
+export function NovaeLanding({ explore, error }) {
   return (
     <main className="landing3d">
       <Canvas
@@ -15,7 +15,7 @@ export function NovaeLanding({ login, explore, error, isLoading, onLaunch }) {
         <NovaeLandingUniverse />
       </Canvas>
       <div className="landing3d-vignette" />
-      <NovaeLandingUI login={login} explore={explore} error={error} isLoading={isLoading} onLaunch={onLaunch} />
+      <NovaeLandingUI explore={explore} error={error} />
     </main>
   )
 }

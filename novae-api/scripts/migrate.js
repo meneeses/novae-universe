@@ -77,12 +77,14 @@ function parseCount(defaultCount) {
 async function migrate(direction, defaultCount) {
   const count = parseCount(defaultCount)
   await runner(migrationOptions(direction, count))
+  await reloadSchemaCache()
 }
 
 async function redo() {
   const count = parseCount(1)
   await runner(migrationOptions('down', count))
   await runner(migrationOptions('up', count))
+  await reloadSchemaCache()
 }
 
 async function reset() {
@@ -92,6 +94,7 @@ async function reset() {
 
   await runner(migrationOptions('down', Infinity))
   await runner(migrationOptions('up', Infinity))
+  await reloadSchemaCache()
 }
 
 async function status() {
@@ -120,6 +123,19 @@ async function status() {
       const migrationName = file.replace(/\.js$/, '')
       console.log(`${applied.has(migrationName) ? 'up  ' : 'down'} ${file}`)
     }
+  } finally {
+    await client.end()
+  }
+}
+
+async function reloadSchemaCache() {
+  const connectionString = requireDatabaseUrl()
+  validateConnectionString(connectionString)
+  const client = new Client({ connectionString })
+
+  await client.connect()
+  try {
+    await client.query(`NOTIFY pgrst, 'reload schema'`)
   } finally {
     await client.end()
   }

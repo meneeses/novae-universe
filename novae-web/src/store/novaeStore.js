@@ -1,32 +1,12 @@
 import { create } from 'zustand'
+import { api } from '../lib/api'
 
-const API_BASE_URL = (import.meta.env.NOVAE_API_URL ?? 'http://localhost:3333').replace(/\/$/, '')
-
-async function fetchSystemWorlds(username, token) {
-  const response = await fetch(`${API_BASE_URL}/novae/stars/${encodeURIComponent(username)}/worlds`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
-  })
-  const body = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(body?.message ?? body?.error ?? `Request failed with status ${response.status}.`)
-  }
-
-  return body
+async function fetchSystemWorlds(username) {
+  return api.get(`/novae/stars/${encodeURIComponent(username)}/worlds`)
 }
 
-async function requestSupernova(username, token) {
-  const response = await fetch(`${API_BASE_URL}/novae/stars/${encodeURIComponent(username)}`, {
-    method: 'DELETE',
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
-  })
-  const body = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(body?.message ?? body?.error ?? `Request failed with status ${response.status}.`)
-  }
-
-  return body
+async function requestSupernova(username) {
+  return api.delete(`/novae/stars/${encodeURIComponent(username)}`)
 }
 
 const initialState = {
@@ -91,10 +71,7 @@ export const useNovaeStore = create((set) => ({
 
     set({ systemTransition: true })
     try {
-      const activeSystemWorlds = await fetchSystemWorlds(
-        normalizedUsername,
-        useNovaeStore.getState().token
-      )
+      const activeSystemWorlds = await fetchSystemWorlds(normalizedUsername)
       set({
         galaxyMode: 'system',
         activeNovaeStarUsername: normalizedUsername,
@@ -117,7 +94,7 @@ export const useNovaeStore = create((set) => ({
     window.setTimeout(() => set({ systemTransition: false }), 350)
   },
   triggerSupernova: async (username) => {
-    const star = await requestSupernova(username, useNovaeStore.getState().token)
+    const star = await requestSupernova(username)
     set((state) => ({
       novaeStars: state.novaeStars.map((item) =>
         (item.github_username ?? item.username).toLowerCase() === username.toLowerCase()

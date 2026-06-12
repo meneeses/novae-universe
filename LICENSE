@@ -1,21 +1,23 @@
-MIT License
+Novae Universe License v1.0
 
-Copyright (c) 2026 Novae Universe
+Copyright (c) 2024 João Meneses
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted to any person to view, fork, and contribute
+to this software solely via pull requests submitted to the official
+repository at github.com/meneeses/novae-universe.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+All accepted contributions become property of the original author
+under this license, with no rights retained by the contributor.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The following are strictly prohibited without explicit written
+permission from the copyright holder:
+
+- Commercial use of this software or any derivative work
+- Redistribution of this software or any derivative work
+- Hosting a public or private instance of this software
+- Using this software or any part of it in another product or service
+- Removing or altering this license notice
+
+This software is provided "as is", without warranty of any kind.
+
+For commercial licensing inquiries, contact: meneses-joao@hotmail.com

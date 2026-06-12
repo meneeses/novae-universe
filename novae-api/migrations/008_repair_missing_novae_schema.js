@@ -1,5 +1,74 @@
 export const up = (pgm) => {
   pgm.sql(`
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+    CREATE TABLE IF NOT EXISTS novae_stars (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      github_username text NOT NULL UNIQUE,
+      display_name text,
+      avatar_url text,
+      bio text,
+      position_x float NOT NULL,
+      position_z float NOT NULL,
+      star_color text DEFAULT '#ffdd44',
+      star_size float DEFAULT 1.0,
+      star_type text DEFAULT 'main_sequence' CHECK (star_type IN ('dwarf', 'main_sequence', 'giant', 'supergiant', 'nebula')),
+      total_repos integer DEFAULT 0,
+      total_commits integer DEFAULT 0,
+      followers integer DEFAULT 0,
+      primary_language text,
+      account_age_days integer DEFAULT 0,
+      status text NOT NULL DEFAULT 'main_sequence' CHECK (status IN ('main_sequence', 'supernova', 'nebula')),
+      supernova_at timestamptz,
+      supernova_scheduled_delete timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_seen timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS novae_worlds (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      novae_star_id uuid NOT NULL REFERENCES novae_stars(id) ON DELETE CASCADE,
+      github_username text NOT NULL,
+      repo_name text NOT NULL,
+      repo_full_name text NOT NULL,
+      description text,
+      language text,
+      html_url text NOT NULL,
+      commit_count integer DEFAULT 0,
+      stars_count integer DEFAULT 0,
+      forks_count integer DEFAULT 0,
+      contributor_count integer DEFAULT 0,
+      world_type text DEFAULT 'planet',
+      orbit_radius float NOT NULL,
+      orbit_speed float NOT NULL,
+      orbit_offset float NOT NULL,
+      is_collab boolean DEFAULT false,
+      collab_username text,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS novae_binaries (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      novae_star_a_id uuid NOT NULL REFERENCES novae_stars(id) ON DELETE CASCADE,
+      novae_star_b_id uuid NOT NULL REFERENCES novae_stars(id) ON DELETE CASCADE,
+      shared_repo_full_name text NOT NULL,
+      novae_world_id uuid NOT NULL REFERENCES novae_worlds(id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_novae_binaries_pair
+      ON novae_binaries (novae_star_a_id, novae_star_b_id);
+    CREATE INDEX IF NOT EXISTS idx_novae_stars_position
+      ON novae_stars (position_x, position_z);
+    CREATE INDEX IF NOT EXISTS idx_novae_worlds_orbit
+      ON novae_worlds (novae_star_id, orbit_radius);
+    CREATE INDEX IF NOT EXISTS idx_novae_stars_status
+      ON novae_stars (status);
+
+    ALTER TABLE novae_stars ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE novae_worlds ENABLE ROW LEVEL SECURITY;
+    REVOKE ALL ON TABLE novae_stars, novae_worlds FROM anon, authenticated;
+
     CREATE OR REPLACE FUNCTION register_novae_star_with_worlds(
       novae_star_payload JSONB,
       worlds_payload JSONB
@@ -108,5 +177,10 @@ export const up = (pgm) => {
 }
 
 export const down = (pgm) => {
-  pgm.sql('DROP FUNCTION IF EXISTS register_novae_star_with_worlds(JSONB, JSONB)')
+  pgm.sql(`
+    DROP FUNCTION IF EXISTS register_novae_star_with_worlds(JSONB, JSONB);
+    DROP TABLE IF EXISTS novae_binaries CASCADE;
+    DROP TABLE IF EXISTS novae_worlds CASCADE;
+    DROP TABLE IF EXISTS novae_stars CASCADE;
+  `)
 }

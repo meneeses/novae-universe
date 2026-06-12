@@ -1,6 +1,6 @@
 import { useNovaeStore } from '../store/novaeStore'
 
-const BASE_URL = (import.meta.env.NOVAE_API_URL ?? 'http://localhost:3333').replace(/\/$/, '')
+const BASE_URL = (import.meta.env.NOVAE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
 function decodeJwtPayload(token) {
   try {

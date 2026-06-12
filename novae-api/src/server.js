@@ -9,17 +9,8 @@ import authRoutes from './routes/auth.js'
 import githubRoutes from './routes/github.js'
 import novaeRoutes from './routes/novae.js'
 
-const requiredEnvironmentVariables = [
-  'NOVAE_JWT_SECRET',
-  'NOVAE_SUPABASE_URL',
-  'NOVAE_SUPABASE_KEY'
-]
-
-for (const variable of requiredEnvironmentVariables) {
-  if (!process.env[variable]) {
-    throw new Error(`${variable} is required`)
-  }
-}
+const jwtSecret = process.env.JWT_SECRET || process.env.NOVAE_JWT_SECRET
+if (!jwtSecret) throw new Error('JWT_SECRET is required')
 
 const fastify = Fastify({
   logger: true,
@@ -35,7 +26,7 @@ await fastify.register(cors, {
   allowedHeaders: ['Content-Type', 'Authorization']
 })
 await fastify.register(helmet, { contentSecurityPolicy: false })
-await fastify.register(jwt, { secret: process.env.NOVAE_JWT_SECRET })
+await fastify.register(jwt, { secret: jwtSecret })
 await fastify.register(rateLimit, rateLimitOptions)
 
 fastify.get(
@@ -52,7 +43,7 @@ fastify.get(
   async () => ({ status: 'ok', timestamp: new Date() })
 )
 
-await fastify.register(authRoutes, { prefix: '/novae/auth' })
+await fastify.register(authRoutes, { prefix: '/auth' })
 await fastify.register(novaeRoutes)
 await fastify.register(githubRoutes, { prefix: '/novae/github' })
 
@@ -75,7 +66,7 @@ fastify.setErrorHandler((error, request, reply) => {
   })
 })
 
-const port = Number(process.env.PORT ?? 3333)
+const port = Number(process.env.PORT ?? 3000)
 
 process.on('SIGTERM', async () => {
   await fastify.close()

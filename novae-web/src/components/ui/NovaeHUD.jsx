@@ -11,13 +11,11 @@ export function NovaeHUD({
   isBraking,
   nearNovaeWorld,
   isGuest,
-  login,
   galaxyMode = 'galaxy',
   activeNovaeStarUsername = null,
   dimension = 'solar'
 }) {
   const [showControls, setShowControls] = useState(true)
-  const [username, setUsername] = useState('')
   const isLoginOpen = useNovaeStore((state) => state.isLoginOpen)
   const error = useNovaeStore((state) => state.error)
   const setLoginOpen = useNovaeStore((state) => state.setLoginOpen)
@@ -73,25 +71,18 @@ export function NovaeHUD({
       </aside>
 
       {isGuest && (
-        <button className="guest-login-button" type="button" onClick={() => setLoginOpen(true)}>
-          🌍 Find My NovaeWorld
-        </button>
+        <a className="guest-login-button" href={`${(import.meta.env.NOVAE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')}/auth/github`}>
+          Sign in with GitHub
+        </a>
       )}
 
       {isGuest && isLoginOpen && (
         <aside className="guest-login-panel">
-          <strong>&gt; Enter GitHub username</strong>
-          <input
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            onKeyDown={(event) => event.key === 'Enter' && login(username)}
-            placeholder="github username"
-            maxLength={39}
-            autoFocus
-          />
+          <strong>&gt; Create your star system</strong>
+          <p>Sign in securely with GitHub to map your repositories.</p>
           {error && <span className="guest-login-error">{error}</span>}
           <div>
-            <button type="button" onClick={() => login(username)}>Launch</button>
+            <a href={`${(import.meta.env.NOVAE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')}/auth/github`}>Sign in with GitHub</a>
             <button type="button" onClick={() => setLoginOpen(false)}>Cancel</button>
           </div>
         </aside>

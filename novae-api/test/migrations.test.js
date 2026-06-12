@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { readdir } from 'node:fs/promises'
 import path from 'node:path'
 import test from 'node:test'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { MigrationBuilder } from 'node-pg-migrate'
 
-const migrationsDirectory = path.resolve('migrations')
+const migrationsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
 
 function builder() {
   return new MigrationBuilder(
@@ -22,13 +22,14 @@ test('all migrations generate reversible SQL', async () => {
     .sort()
 
   assert.deepEqual(files, [
-    '001_create_novae_stars.js',
-    '002_create_novae_worlds.js',
-    '003_add_novae_star_indexes.js',
-    '004_add_novae_supernova_status.js',
-    '005_add_novae_binaries.js',
-    '006_add_register_novae_star_rpc.js',
-    '007_add_novae_star_status.js'
+    '001_create_stars.js',
+    '002_create_planets.js',
+    '003_add_star_indexes.js',
+    '004_add_supernova_status.js',
+    '005_add_binary_systems.js',
+    '006_add_register_star_rpc.js',
+    '007_add_star_status.js',
+    '008_repair_missing_novae_schema.js'
   ])
 
   for (const file of files) {
