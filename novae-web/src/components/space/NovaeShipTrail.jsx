@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { AUTO_CRUISE_SPEED, MAX_SPEED } from '../../hooks/useNovaeShip'
+import { NORMAL_SPEED, BOOST_SPEED } from '../../hooks/useNovaeShip'
 
 const TRAIL_LENGTH = 80
 const TRAIL_INTERVAL = 2
@@ -42,7 +42,7 @@ export function NovaeShipTrail({ novaeShipRef, speed }) {
     }
 
     const currentSpeed = speed?.current ?? speed ?? 0
-    const speedFactor = THREE.MathUtils.clamp((currentSpeed - AUTO_CRUISE_SPEED) / (MAX_SPEED - AUTO_CRUISE_SPEED), 0, 1)
+    const speedFactor = THREE.MathUtils.clamp((currentSpeed - NORMAL_SPEED) / (BOOST_SPEED - NORMAL_SPEED), 0, 1)
     materialRef.current.opacity = THREE.MathUtils.lerp(materialRef.current.opacity, speedFactor * 0.8, 0.08)
   })
 

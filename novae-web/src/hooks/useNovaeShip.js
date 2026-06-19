@@ -5,48 +5,44 @@ import { useNovaeStore } from '../store/novaeStore'
 import { SPAWN_POSITION } from '../utils/solarSystem'
 import { useNovaeControls } from './useNovaeControls'
 
-export const AUTO_CRUISE_SPEED = 0.025
-export const MAX_SPEED = 0.7
-export const BOOST_MAX_SPEED = 1.8
-const THRUST = 0.012
-const REVERSE_THRUST = 0.006
-const TURN_SPEED = 0.035
-const PITCH_SPEED = 0.025
-const VERTICAL_SPEED = 0.012
-const BOOST_MULTIPLIER = 3.5
-const DAMPING = 0.985
+export const CRUISE_SPEED = 0.18
+export const NORMAL_SPEED = CRUISE_SPEED
+export const BOOST_SPEED = 0.55
+export const MAX_SPEED = BOOST_SPEED
+export const BOOST_MAX_SPEED = BOOST_SPEED
+const TURN_SPEED = 0.032
+const VERTICAL_SPEED = 0.25
+const MAX_PITCH = 0.38
+const PITCH_LERP = 6
 const CAMERA_LERP = 0.06
 const CAMERA_OFFSET = new THREE.Vector3(0, 4, 12)
 const EMPTY_ZONE_RADIUS = 180
 const FORWARD = new THREE.Vector3(0, 0, -1)
-const UP = new THREE.Vector3(0, 1, 0)
-const MAX_PITCH = Math.PI * 0.32
 
 export function useNovaeShip(novaeShipRef, cameraRef, onUpdate, controllerRef) {
   const keys = useNovaeControls()
   const position = useRef(new THREE.Vector3(...SPAWN_POSITION))
-  const velocity = useRef(new THREE.Vector3(0, 0, -AUTO_CRUISE_SPEED))
+  const velocity = useRef(new THREE.Vector3(0, 0, -CRUISE_SPEED))
   const yaw = useRef(0)
   const pitch = useRef(0)
   const roll = useRef(0)
+  const verticalInput = useRef(0)
   const forward = useRef(FORWARD.clone())
   const movementEuler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'))
   const visualEuler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'))
   const movementQuaternion = useRef(new THREE.Quaternion())
   const visualQuaternion = useRef(new THREE.Quaternion())
-  const cruiseVelocity = useRef(new THREE.Vector3())
   const cameraTarget = useRef(new THREE.Vector3())
   const cameraOffset = useRef(CAMERA_OFFSET.clone())
+  const cameraPitchOffset = useRef(0)
   const cameraShake = useRef(new THREE.Vector3())
   const updateTimer = useRef(0)
   const warningSuppressedUntil = useRef(0)
-  const cruiseRecovery = useRef(1)
-  const brakeLatched = useRef(false)
-  const wasBrakePressed = useRef(false)
   const isThrusting = useRef(false)
   const isBoosting = useRef(false)
-  const isBraking = useRef(false)
-  const speed = useRef(AUTO_CRUISE_SPEED)
+  const isEngineOff = useRef(false)
+  const isEngineEnabled = useRef(true)
+  const speed = useRef(CRUISE_SPEED)
 
   function resetWarning() {
     useNovaeStore.getState().cancelEmptyZoneWarning()
@@ -56,8 +52,9 @@ export function useNovaeShip(novaeShipRef, cameraRef, onUpdate, controllerRef) {
     controllerRef.current = {
       teleport(destination) {
         position.current.fromArray(destination)
-        brakeLatched.current = false
-        velocity.current.copy(forward.current).multiplyScalar(AUTO_CRUISE_SPEED)
+        isEngineEnabled.current = true
+        velocity.current.copy(forward.current).multiplyScalar(CRUISE_SPEED)
+        speed.current = CRUISE_SPEED
         resetWarning()
         const camera = cameraRef?.current
         if (camera) {
@@ -67,8 +64,8 @@ export function useNovaeShip(novaeShipRef, cameraRef, onUpdate, controllerRef) {
       },
       stop() {
         velocity.current.set(0, 0, 0)
-        cruiseRecovery.current = 0
-        brakeLatched.current = true
+        speed.current = 0
+        isEngineEnabled.current = false
       },
       suppressEmptyZoneWarning(duration = 10000) {
         warningSuppressedUntil.current = performance.now() + duration
@@ -80,64 +77,35 @@ export function useNovaeShip(novaeShipRef, cameraRef, onUpdate, controllerRef) {
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05)
     const frameScale = dt * 60
-    const boostFactor = keys.boost ? BOOST_MULTIPLIER : 1
-    const maxSpeed = keys.boost ? BOOST_MAX_SPEED : MAX_SPEED
-    const hasThrustInput = keys.forward || keys.backward || keys.up || keys.down
-    const brakePressed = keys.brake && !wasBrakePressed.current
-
-    if (brakePressed) {
-      brakeLatched.current = !brakeLatched.current
-      cruiseRecovery.current = 0
-      if (brakeLatched.current) velocity.current.set(0, 0, 0)
-    } else if (keys.forward && brakeLatched.current) {
-      brakeLatched.current = false
-    }
-    wasBrakePressed.current = keys.brake
 
     if (keys.left) yaw.current += TURN_SPEED * frameScale
     if (keys.right) yaw.current -= TURN_SPEED * frameScale
-    if (keys.up) pitch.current += PITCH_SPEED * frameScale
-    if (keys.down) pitch.current -= PITCH_SPEED * frameScale
-    pitch.current = THREE.MathUtils.clamp(pitch.current, -MAX_PITCH, MAX_PITCH)
 
     const targetRoll = keys.left ? 0.35 : keys.right ? -0.35 : 0
     roll.current = THREE.MathUtils.lerp(roll.current, targetRoll, 0.08 * frameScale)
+    verticalInput.current = keys.engineEnabled ? (keys.up ? 1 : keys.down ? -1 : 0) : 0
+    const targetPitch = verticalInput.current > 0 ? MAX_PITCH : verticalInput.current < 0 ? -MAX_PITCH : 0
+    pitch.current += (targetPitch - pitch.current) * PITCH_LERP * dt
 
-    movementEuler.current.set(pitch.current, yaw.current, 0)
+    movementEuler.current.set(0, yaw.current, 0)
     movementQuaternion.current.setFromEuler(movementEuler.current)
     forward.current.copy(FORWARD).applyQuaternion(movementQuaternion.current).normalize()
 
-    isBraking.current = brakeLatched.current
-    isBoosting.current = keys.boost && !brakeLatched.current
-    isThrusting.current = hasThrustInput && !brakeLatched.current
+    isEngineEnabled.current = keys.engineEnabled
+    isEngineOff.current = !keys.engineEnabled
+    isBoosting.current = keys.boost && keys.engineEnabled
+    isThrusting.current = keys.engineEnabled
 
-    if (brakeLatched.current) {
+    if (!keys.engineEnabled) {
       velocity.current.set(0, 0, 0)
-      cruiseRecovery.current = 0
+      speed.current = 0
     } else {
-      if (keys.forward) {
-        velocity.current.addScaledVector(forward.current, THRUST * boostFactor * frameScale)
-      }
-      if (keys.backward) {
-        velocity.current.addScaledVector(forward.current, -REVERSE_THRUST * frameScale)
-      }
-      if (keys.up) velocity.current.addScaledVector(UP, VERTICAL_SPEED * frameScale)
-      if (keys.down) velocity.current.addScaledVector(UP, -VERTICAL_SPEED * frameScale)
-
-      velocity.current.multiplyScalar(Math.pow(DAMPING, frameScale))
-
-      if (!hasThrustInput) {
-        cruiseRecovery.current = Math.min(1, cruiseRecovery.current + dt * 0.45)
-        cruiseVelocity.current.copy(forward.current).multiplyScalar(
-          AUTO_CRUISE_SPEED * cruiseRecovery.current
-        )
-        velocity.current.lerp(cruiseVelocity.current, Math.min(1, 0.025 * frameScale))
-      } else {
-        cruiseRecovery.current = 1
-      }
+      speed.current = keys.boost ? BOOST_SPEED : NORMAL_SPEED
+      velocity.current.copy(forward.current).multiplyScalar(speed.current)
+      if (keys.up) position.current.y += VERTICAL_SPEED * frameScale
+      if (keys.down) position.current.y -= VERTICAL_SPEED * frameScale
     }
 
-    if (velocity.current.length() > maxSpeed) velocity.current.setLength(maxSpeed)
     position.current.addScaledVector(velocity.current, frameScale)
 
     if (novaeShipRef.current) {
@@ -151,21 +119,27 @@ export function useNovaeShip(novaeShipRef, cameraRef, onUpdate, controllerRef) {
     }
 
     const camera = cameraRef?.current ?? state.camera
-    cameraOffset.current.copy(CAMERA_OFFSET).applyQuaternion(movementQuaternion.current)
+    cameraOffset.current.set(
+      Math.sin(yaw.current) * 10,
+      3.5 + pitch.current * 2,
+      Math.cos(yaw.current) * 10
+    )
+    cameraPitchOffset.current = THREE.MathUtils.lerp(cameraPitchOffset.current, pitch.current, Math.min(1, PITCH_LERP * dt))
     cameraTarget.current.copy(position.current).add(cameraOffset.current)
     camera.position.lerp(cameraTarget.current, Math.min(1, CAMERA_LERP * frameScale))
-    const shakeAmount = isBoosting.current ? 0.025 : isThrusting.current ? 0.015 : 0
+    const shakeAmount = isBoosting.current ? 0.015 : isThrusting.current ? 0.006 : 0
     cameraShake.current.set(
       (Math.random() - 0.5) * shakeAmount,
       (Math.random() - 0.5) * shakeAmount,
       0
     )
     camera.position.add(cameraShake.current)
-    camera.lookAt(position.current)
+    const lookAhead = position.current.clone().addScaledVector(forward.current, 5)
+    lookAhead.y += cameraPitchOffset.current * -3
+    camera.lookAt(lookAhead)
 
     const store = useNovaeStore.getState()
-    speed.current = velocity.current.length()
-    const targetFov = 55 + THREE.MathUtils.clamp(speed.current / MAX_SPEED, 0, 1) * 8
+    const targetFov = isBoosting.current ? 65 : 55
     camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, Math.min(1, 0.05 * frameScale))
     camera.updateProjectionMatrix()
     const outsideEmptyZone =
@@ -189,11 +163,14 @@ export function useNovaeShip(novaeShipRef, cameraRef, onUpdate, controllerRef) {
         yaw: yaw.current,
         isThrusting: isThrusting.current,
         isBoosting: isBoosting.current,
-        isBraking: isBraking.current
+        isEngineOff: isEngineOff.current,
+        engineEnabled: isEngineEnabled.current,
+        verticalInput: verticalInput.current,
+        fireSequence: keys.fireSequence
       })
       updateTimer.current = 0
     }
   })
 
-  return { position, velocity, speed, isThrusting, isBoosting, isBraking }
+  return { position, velocity, forward, yaw, pitch, speed, isThrusting, isBoosting, isEngineOff, isEngineEnabled, verticalInput, fireSequence: keys.fireSequence }
 }

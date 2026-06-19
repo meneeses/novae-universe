@@ -209,7 +209,7 @@ function IntroShip({ timelineRef }) {
   const speed = useRef(0.62)
   const thrusting = useRef(true)
   const boosting = useRef(false)
-  const braking = useRef(false)
+  const engineOff = useRef(false)
   const start = useMemo(() => new THREE.Vector3(-36, 69, -3), [])
   const control = useMemo(() => new THREE.Vector3(-2, 74, -48), [])
   const end = useMemo(() => new THREE.Vector3(34, 77, -88), [])
@@ -235,7 +235,7 @@ function IntroShip({ timelineRef }) {
       speed={speed}
       isThrusting={thrusting}
       isBoosting={boosting}
-      isBraking={braking}
+      isEngineOff={engineOff}
     />
   )
 }

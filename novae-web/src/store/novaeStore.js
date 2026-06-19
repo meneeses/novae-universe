@@ -29,6 +29,7 @@ const initialState = {
   selectedObject: null,
   nearNovaeWorld: null,
   isLoginOpen: false,
+  isInvisible: false,
   emptyZoneWarning: false,
   emptyZoneCountdown: 5
 }
@@ -60,6 +61,8 @@ export const useNovaeStore = create((set) => ({
       }
     })),
   setNearNovaeWorld: (nearNovaeWorld) => set({ nearNovaeWorld }),
+  setInvisible: (isInvisible) => set({ isInvisible }),
+  toggleInvisible: () => set((state) => ({ isInvisible: !state.isInvisible })),
   setSelectedObject: (selectedObject) => set({ selectedObject }),
   clearSelectedObject: () => set({ selectedObject: null }),
   setGalaxyMode: (galaxyMode) => set({ galaxyMode }),

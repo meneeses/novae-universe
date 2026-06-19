@@ -6,14 +6,20 @@ export function NovaeHUD({
   speed,
   yaw,
   position,
-  isThrusting,
+  isThrusting: _isThrusting,
   isBoosting,
-  isBraking,
+  isEngineOff,
   nearNovaeWorld,
   isGuest,
   galaxyMode = 'galaxy',
   activeNovaeStarUsername = null,
-  dimension = 'solar'
+  dimension = 'solar',
+  spaceAlert = null,
+  engineEnabled = true,
+  weaponStatus = { cooldownProgress: 1, ready: true },
+  presence = { playerCount: 0, nearbyPlayers: [], remotePlayers: [] },
+  isInvisible = false,
+  onToggleInvisible
 }) {
   const [showControls, setShowControls] = useState(true)
   const isLoginOpen = useNovaeStore((state) => state.isLoginOpen)
@@ -22,13 +28,11 @@ export function NovaeHUD({
   const speedPercent = Math.min(100, Math.round((speed / BOOST_MAX_SPEED) * 100))
   const speedBlocks = Math.min(10, Math.round((speed / BOOST_MAX_SPEED) * 10))
   const speedBar = `${'█'.repeat(speedBlocks)}${'░'.repeat(10 - speedBlocks)}`
-  const flightState = isBraking
-    ? 'BRAKING'
-    : isBoosting
-      ? 'BOOST'
-      : isThrusting
-        ? 'THRUSTING'
-        : 'CRUISING'
+  const weaponBlocks = Math.min(10, Math.max(0, Math.round((weaponStatus.cooldownProgress ?? 1) * 10)))
+  const weaponBar = `${'█'.repeat(weaponBlocks)}${'░'.repeat(10 - weaponBlocks)}`
+  const nearbyPlayers = (presence.nearbyPlayers ?? []).filter((player) => player.distance <= 100)
+  const distantPlayers = (presence.remotePlayers ?? []).filter((player) => player.distance > 100).slice(0, 3)
+  const engineLabel = !engineEnabled || isEngineOff ? '■ ENGINE OFF' : '● ENGINE ON'
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setShowControls(false), 10000)
@@ -48,10 +52,13 @@ export function NovaeHUD({
         <span className="hud-speed-scale">[◄ slow&nbsp;&nbsp;&nbsp; {speedPercent}%&nbsp;&nbsp;&nbsp; fast ►]</span>
         <span>X&nbsp; {position.x.toFixed(1)}&nbsp; Y&nbsp; {position.y.toFixed(1)}&nbsp; Z&nbsp; {position.z.toFixed(1)}</span>
         <span className="hud-divider" />
-        <span className={`hud-thrust${isThrusting || isBraking ? ' hud-thrust--active' : ''}${isBoosting ? ' hud-boost' : ''}`}>
-          {flightState}
+        <span className={`hud-thrust${isEngineOff ? ' hud-engine-off' : ' hud-engine-on'}`}>
+          {engineLabel}
         </span>
+        {isBoosting && <span className="hud-boost-active">▲ BOOST</span>}
+        <span>WEAPON&nbsp; [{weaponBar}] {weaponStatus.ready ? 'READY' : 'LOADING'}</span>
         {nearNovaeWorld && <span>NEAR&nbsp; @{nearNovaeWorld.username}</span>}
+        {spaceAlert && <span className="hud-space-alert">⚠ {spaceAlert}</span>}
         <div className="space-compass" aria-label="Ship heading">
           <span className="space-compass__north">N</span>
           <span className="space-compass__south">S</span>
@@ -62,12 +69,47 @@ export function NovaeHUD({
       </aside>
 
       <aside className={`controls-hud${showControls ? '' : ' controls-hud--hidden'}`}>
-        <span>W / S&nbsp; THRUST / REVERSE</span>
-        <span>A / D&nbsp; TURN</span>
-        <span>Q / E&nbsp; CLIMB / DIVE</span>
+        <span>W / ↑&nbsp; ASCEND</span>
+        <span>S / ↓&nbsp; DESCEND</span>
+        <span>A / ←&nbsp; TURN LEFT</span>
+        <span>D / →&nbsp; TURN RIGHT</span>
         <span>SHIFT&nbsp; BOOST</span>
-        <span>SPACE&nbsp; BRAKE TOGGLE</span>
+        <span>SPACE&nbsp; ENGINE ON/OFF</span>
+        <span>F&nbsp; FIRE</span>
         {galaxyMode === 'system' && <span className="controls-hud__hint">CYAN GATE&nbsp; EXIT SYSTEM</span>}
+      </aside>
+
+      <aside className="presence-hud">
+        <button
+          type="button"
+          className={`presence-hud__visibility${isInvisible ? ' presence-hud__visibility--hidden' : ''}`}
+          onClick={onToggleInvisible}
+        >
+          {isInvisible ? '🙈 Hidden' : '👁 Visible'}
+        </button>
+        {nearbyPlayers.length > 0 ? (
+          <>
+            <strong>👥 {nearbyPlayers.length} explorers nearby</strong>
+            {nearbyPlayers.slice(0, 5).map((player) => (
+              <span key={player.uid}>
+                <i style={{ backgroundColor: player.color }} />
+                @{player.uid}
+                <em>{Math.round(player.distance)}u</em>
+              </span>
+            ))}
+          </>
+        ) : (
+          <>
+            <strong>🌌 Exploring alone...</strong>
+            {distantPlayers.map((player) => (
+              <span key={player.uid}>
+                <i style={{ backgroundColor: player.color }} />
+                @{player.uid}
+                <em>{player.area?.endsWith('_system') ? `(in @${player.area.replace(/_system$/, '')}'s system)` : 'far away'}</em>
+              </span>
+            ))}
+          </>
+        )}
       </aside>
 
       {isGuest && (

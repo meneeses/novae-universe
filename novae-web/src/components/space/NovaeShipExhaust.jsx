@@ -4,9 +4,10 @@ import * as THREE from 'three'
 
 const FLAME_COUNT = 60
 const VAPOR_COUNT = 20
-const RETRO_COUNT = 16
 const WHITE = new THREE.Color('#ffffff')
 const BLUE = new THREE.Color('#88ccff')
+const BOOST_PURPLE = new THREE.Color('#aa66ff')
+const BOOST_DARK = new THREE.Color('#6622aa')
 const COLD_BLUE = new THREE.Color('#2244aa')
 const VAPOR = new THREE.Color('#334466')
 
@@ -33,8 +34,8 @@ function writePool(pool, positions, colors, colorForLife) {
   })
 }
 
-function ParticleSystem({ kind, isThrusting, isBraking }) {
-  const count = kind === 'flame' ? FLAME_COUNT : kind === 'vapor' ? VAPOR_COUNT : RETRO_COUNT
+function ParticleSystem({ kind, isThrusting, isBoosting, isEngineOff, verticalInput }) {
+  const count = kind === 'flame' ? FLAME_COUNT : VAPOR_COUNT
   const pool = useMemo(() => createPool(count), [count])
   const positions = useMemo(() => new Float32Array(count * 3), [count])
   const colors = useMemo(() => new Float32Array(count * 3), [count])
@@ -56,37 +57,31 @@ function ParticleSystem({ kind, isThrusting, isBraking }) {
   useFrame((_, delta) => {
     if (!geometryRef.current || !materialRef.current) return
     const thrusting = isThrusting.current ?? isThrusting
-    const braking = isBraking.current ?? isBraking
+    const boosting = isBoosting.current ?? isBoosting
+    const engineOff = isEngineOff.current ?? isEngineOff
+    const climbInput = Math.abs(verticalInput?.current ?? verticalInput ?? 0)
 
-    if (kind === 'flame' && thrusting && !braking) {
-      for (let index = 0; index < 4; index += 1) {
+    if (kind === 'flame' && thrusting && !engineOff) {
+      const burstCount = boosting ? 3 : climbInput > 0 ? 5 : 3
+      for (let index = 0; index < burstCount; index += 1) {
         const engineX = index % 3 === 0 ? -0.38 : index % 3 === 1 ? 0.38 : 0
+        const climbPower = climbInput > 0 ? 0.45 : 0
         emit(
-          engineX + (Math.random() - 0.5) * 0.05, -0.07, 0.82,
-          (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05, 1.8 + Math.random() * 0.8,
-          0.6 + Math.random() * 0.4
+          engineX + (Math.random() - 0.5) * 0.07, -0.07, 0.82,
+          (Math.random() - 0.5) * 0.07, (Math.random() - 0.5) * 0.07, (boosting ? 2.1 : 1.65 + climbPower) + Math.random() * 0.55,
+          (boosting ? 0.62 : 0.52 + climbPower * 0.25) + Math.random() * 0.3
         )
       }
     }
 
     smokeTimer.current += delta
-    if (kind === 'vapor' && smokeTimer.current > 0.045) {
+    if (kind === 'vapor' && thrusting && !engineOff && smokeTimer.current > (boosting ? 0.03 : 0.045)) {
       smokeTimer.current = 0
       emit(
         (Math.random() - 0.5) * 0.45, -0.04, 0.78,
         (Math.random() - 0.5) * 0.18, (Math.random() - 0.5) * 0.18, 0.35 + Math.random() * 0.25,
         1.2 + Math.random() * 0.5
       )
-    }
-
-    if (kind === 'retro' && braking) {
-      for (const side of [-1, 1]) {
-        emit(
-          side * 0.3, 0, -0.62,
-          side * 1.1, (Math.random() - 0.5) * 0.15, -0.3,
-          0.18 + Math.random() * 0.08
-        )
-      }
     }
 
     pool.forEach((particle) => {
@@ -97,13 +92,14 @@ function ParticleSystem({ kind, isThrusting, isBraking }) {
 
     writePool(pool, positions, colors, (ratio) => {
       if (kind === 'vapor') return VAPOR
+      if (boosting) return mixedColor.copy(BOOST_PURPLE).lerp(BOOST_DARK, 1 - ratio)
       if (ratio > 0.7) return mixedColor.copy(WHITE).lerp(BLUE, (1 - ratio) / 0.3)
       return mixedColor.copy(BLUE).lerp(COLD_BLUE, 1 - ratio / 0.7)
     })
     geometryRef.current.attributes.position.needsUpdate = true
     geometryRef.current.attributes.color.needsUpdate = true
-    materialRef.current.opacity = kind === 'vapor' ? 0.12 : 0.9
-    materialRef.current.size = kind === 'flame' ? 0.1 : kind === 'retro' ? 0.055 : 0.18
+    materialRef.current.opacity = kind === 'vapor' ? 0.1 : boosting ? 0.72 : 0.78
+    materialRef.current.size = kind === 'flame' ? (boosting ? 0.108 : climbInput > 0 ? 0.12 : 0.09) : boosting ? 0.19 : 0.16
   })
 
   return (
@@ -126,12 +122,11 @@ function ParticleSystem({ kind, isThrusting, isBraking }) {
   )
 }
 
-export function NovaeShipExhaust({ isThrusting, isBraking }) {
+export function NovaeShipExhaust({ isThrusting, isBoosting, isEngineOff, verticalInput = 0 }) {
   return (
     <>
-      <ParticleSystem kind="flame" isThrusting={isThrusting} isBraking={isBraking} />
-      <ParticleSystem kind="vapor" isThrusting={isThrusting} isBraking={isBraking} />
-      <ParticleSystem kind="retro" isThrusting={isThrusting} isBraking={isBraking} />
+      <ParticleSystem kind="flame" isThrusting={isThrusting} isBoosting={isBoosting} isEngineOff={isEngineOff} verticalInput={verticalInput} />
+      <ParticleSystem kind="vapor" isThrusting={isThrusting} isBoosting={isBoosting} isEngineOff={isEngineOff} verticalInput={verticalInput} />
     </>
   )
 }

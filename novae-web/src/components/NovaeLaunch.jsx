@@ -9,7 +9,7 @@ function LaunchSequence({ onComplete, flashRef, rootRef }) {
   const completed = useRef(false)
   const thrust = useRef(true)
   const boost = useRef(true)
-  const braking = useRef(false)
+  const engineOff = useRef(false)
   const speed = useRef(1.8)
 
   useFrame(({ clock }) => {
@@ -43,7 +43,7 @@ function LaunchSequence({ onComplete, flashRef, rootRef }) {
         speed={speed}
         isThrusting={thrust}
         isBoosting={boost}
-        isBraking={braking}
+        isEngineOff={engineOff}
       />
     </>
   )

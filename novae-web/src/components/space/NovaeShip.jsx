@@ -75,7 +75,21 @@ function NavigationLight({ position, color, phase = 0 }) {
   )
 }
 
-export function NovaeShip({ novaeShipRef, speed, isThrusting, isBoosting, isBraking, hasShield = false }) {
+function EnginePointLight({ position, isBoosting, isEngineOff }) {
+  const lightRef = useRef()
+
+  useFrame(() => {
+    if (!lightRef.current) return
+    const boosting = isBoosting.current ?? isBoosting
+    const engineOff = isEngineOff.current ?? isEngineOff
+    lightRef.current.color.set(boosting ? '#9933ff' : '#ff8844')
+    lightRef.current.intensity = THREE.MathUtils.lerp(lightRef.current.intensity, engineOff ? 0 : boosting ? 1.2 : 0.45, 0.12)
+  })
+
+  return <pointLight ref={lightRef} position={position} color="#ff8844" intensity={0.45} distance={4} />
+}
+
+export function NovaeShip({ novaeShipRef, speed, isThrusting, isBoosting, isEngineOff, verticalInput = 0, hasShield = false }) {
   const visualRef = useRef()
   const leftWingRef = useRef()
   const rightWingRef = useRef()
@@ -85,7 +99,7 @@ export function NovaeShip({ novaeShipRef, speed, isThrusting, isBoosting, isBrak
   useFrame(({ clock }) => {
     if (!visualRef.current) return
     const thrusting = isThrusting.current ?? isThrusting
-    const braking = isBraking.current ?? isBraking
+    const engineOff = isEngineOff.current ?? isEngineOff
     const currentSpeed = speed?.current ?? speed ?? 0
     const idleFloat = currentSpeed < 0.06 ? Math.sin(clock.elapsedTime * 0.8) * 0.012 : 0
     const vibration = thrusting ? 0.004 : 0
@@ -100,7 +114,7 @@ export function NovaeShip({ novaeShipRef, speed, isThrusting, isBoosting, isBrak
     if (leftWingRef.current) leftWingRef.current.rotation.z = -0.18 + bankAmount * 0.15
     if (rightWingRef.current) rightWingRef.current.rotation.z = 0.18 - bankAmount * 0.15
 
-    const nacelleScale = braking ? 0.85 : 1
+    const nacelleScale = engineOff ? 0.85 : 1
     if (leftNacelleRef.current) leftNacelleRef.current.scale.z = THREE.MathUtils.lerp(leftNacelleRef.current.scale.z, nacelleScale, 0.1)
     if (rightNacelleRef.current) rightNacelleRef.current.scale.z = THREE.MathUtils.lerp(rightNacelleRef.current.scale.z, nacelleScale, 0.1)
   })
@@ -143,14 +157,16 @@ export function NovaeShip({ novaeShipRef, speed, isThrusting, isBoosting, isBrak
             <group key={x} ref={index === 0 ? leftNacelleRef : rightNacelleRef} position={[x, -0.08, 0.45]}>
               <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.09, 0.11, 0.55, 12]} /><meshStandardMaterial color="#888899" metalness={0.85} roughness={0.12} /></mesh>
               <mesh position={[0, 0, 0.28]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.11, 0.09, 0.08, 12]} /><meshStandardMaterial color="#444455" metalness={0.9} roughness={0.05} /></mesh>
-              <NovaeShipGlow position={[0, 0, 0.34]} isThrusting={isThrusting} isBoosting={isBoosting} isBraking={isBraking} index={index} />
+              <NovaeShipGlow position={[0, 0, 0.34]} isThrusting={isThrusting} isBoosting={isBoosting} isEngineOff={isEngineOff} index={index} />
+              <EnginePointLight position={[0, 0, 0.34]} isBoosting={isBoosting} isEngineOff={isEngineOff} />
             </group>
           ))}
 
           <group position={[0, 0, 0.6]}>
             <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.14, 0.18, 0.3, 16]} /><meshStandardMaterial color="#666677" metalness={0.9} roughness={0.08} /></mesh>
             <mesh position={[0, 0, 0.16]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.18, 0.14, 0.06, 16]} /><meshStandardMaterial color="#333344" metalness={0.95} roughness={0.05} /></mesh>
-            <NovaeShipGlow position={[0, 0, 0.22]} isThrusting={isThrusting} isBoosting={isBoosting} isBraking={isBraking} index={2} isMain />
+            <NovaeShipGlow position={[0, 0, 0.22]} isThrusting={isThrusting} isBoosting={isBoosting} isEngineOff={isEngineOff} index={2} isMain />
+            <EnginePointLight position={[0, 0, 0.22]} isBoosting={isBoosting} isEngineOff={isEngineOff} />
           </group>
 
           {[-0.28, 0.28].map((x) => (
@@ -169,7 +185,7 @@ export function NovaeShip({ novaeShipRef, speed, isThrusting, isBoosting, isBrak
           <spotLight position={[0, 0, -1.1]} target-position={[0, 0, -10]} intensity={2} color="#ffffff" angle={0.18} penumbra={0.4} distance={25} />
 
           {hasShield && <EnergyShield />}
-          <NovaeShipExhaust isThrusting={isThrusting} isBraking={isBraking} />
+          <NovaeShipExhaust isThrusting={isThrusting} isBoosting={isBoosting} isEngineOff={isEngineOff} verticalInput={verticalInput} />
         </group>
       </group>
       <NovaeShipTrail novaeShipRef={novaeShipRef} speed={speed} />

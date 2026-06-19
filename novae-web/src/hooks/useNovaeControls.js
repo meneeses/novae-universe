@@ -1,33 +1,4 @@
-import { useEffect, useState } from 'react'
-
-const TRACKED_CODES = new Set([
-  'ArrowUp',
-  'ArrowDown',
-  'ArrowLeft',
-  'ArrowRight',
-  'KeyW',
-  'KeyA',
-  'KeyS',
-  'KeyD',
-  'KeyQ',
-  'KeyE',
-  'Space',
-  'ShiftLeft',
-  'ShiftRight'
-])
-
-function toControls(codes) {
-  return {
-    forward: codes.has('KeyW') || codes.has('ArrowUp'),
-    backward: codes.has('KeyS') || codes.has('ArrowDown'),
-    left: codes.has('KeyA') || codes.has('ArrowLeft'),
-    right: codes.has('KeyD') || codes.has('ArrowRight'),
-    up: codes.has('KeyQ'),
-    down: codes.has('KeyE'),
-    brake: codes.has('Space'),
-    boost: codes.has('ShiftLeft') || codes.has('ShiftRight')
-  }
-}
+import { useEffect, useRef, useState } from 'react'
 
 function isEditableTarget(target) {
   return target instanceof HTMLElement && (
@@ -39,26 +10,80 @@ function isEditableTarget(target) {
 }
 
 export function useNovaeControls() {
-  const [codes, setCodes] = useState(() => new Set())
+  const [, forceUpdate] = useState(0)
+  const controlsRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    boost: false,
+    fire: false,
+    space: false,
+    engineEnabled: true,
+    fireSequence: 0
+  })
+  const spaceHandled = useRef(false)
 
   useEffect(() => {
-    function updateKey(event, isPressed) {
-      if (!TRACKED_CODES.has(event.code)) return
-      if (isEditableTarget(event.target)) return
+    const keys = controlsRef.current
 
-      if (event.code === 'Space' || event.code.startsWith('Arrow')) event.preventDefault()
-      setCodes((current) => {
-        if (current.has(event.code) === isPressed) return current
-        const next = new Set(current)
-        if (isPressed) next.add(event.code)
-        else next.delete(event.code)
-        return next
-      })
+    function sync() {
+      forceUpdate((value) => value + 1)
     }
 
-    const handleKeyDown = (event) => updateKey(event, true)
-    const handleKeyUp = (event) => updateKey(event, false)
-    const handleBlur = () => setCodes(new Set())
+    function handleKeyDown(event) {
+      if (isEditableTarget(event.target)) return
+      if (event.key === ' ' || event.key.startsWith('Arrow')) event.preventDefault()
+
+      if (event.key === 'w' || event.key === 'W' || event.key === 'ArrowUp') keys.up = true
+      if (event.key === 's' || event.key === 'S' || event.key === 'ArrowDown') keys.down = true
+      if (event.key === 'a' || event.key === 'A' || event.key === 'ArrowLeft') keys.left = true
+      if (event.key === 'd' || event.key === 'D' || event.key === 'ArrowRight') keys.right = true
+      if (event.key === 'Shift') keys.boost = true
+
+      if ((event.key === 'f' || event.key === 'F') && !keys.fire) {
+        keys.fire = true
+        keys.fireSequence += 1
+      }
+
+      if (event.key === ' ' && !spaceHandled.current) {
+        keys.space = true
+        spaceHandled.current = true
+        keys.engineEnabled = !keys.engineEnabled
+      }
+
+      sync()
+    }
+
+    function handleKeyUp(event) {
+      if (isEditableTarget(event.target)) return
+      if (event.key === ' ' || event.key.startsWith('Arrow')) event.preventDefault()
+
+      if (event.key === 'w' || event.key === 'W' || event.key === 'ArrowUp') keys.up = false
+      if (event.key === 's' || event.key === 'S' || event.key === 'ArrowDown') keys.down = false
+      if (event.key === 'a' || event.key === 'A' || event.key === 'ArrowLeft') keys.left = false
+      if (event.key === 'd' || event.key === 'D' || event.key === 'ArrowRight') keys.right = false
+      if (event.key === 'Shift') keys.boost = false
+      if (event.key === 'f' || event.key === 'F') keys.fire = false
+      if (event.key === ' ') {
+        keys.space = false
+        spaceHandled.current = false
+      }
+
+      sync()
+    }
+
+    function handleBlur() {
+      keys.up = false
+      keys.down = false
+      keys.left = false
+      keys.right = false
+      keys.boost = false
+      keys.fire = false
+      keys.space = false
+      spaceHandled.current = false
+      sync()
+    }
 
     document.addEventListener('keydown', handleKeyDown)
     document.addEventListener('keyup', handleKeyUp)
@@ -71,5 +96,5 @@ export function useNovaeControls() {
     }
   }, [])
 
-  return toControls(codes)
+  return controlsRef.current
 }

@@ -1,7 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { MAX_SPEED } from '../../hooks/useNovaeShip'
+import { BOOST_SPEED } from '../../hooks/useNovaeShip'
 
 const LINE_COUNT = 80
 
@@ -15,7 +15,7 @@ export function SpeedLines({ speed }) {
   const positions = useMemo(() => new Float32Array(LINE_COUNT * 6), [])
   const geometry = useMemo(() => new THREE.BufferGeometry(), [])
   const material = useMemo(() => new THREE.LineBasicMaterial({
-    color: '#aaccff',
+    color: '#b478ff',
     transparent: true,
     opacity: 0,
     blending: THREE.AdditiveBlending,
@@ -41,8 +41,9 @@ export function SpeedLines({ speed }) {
 
   useFrame(() => {
     const currentSpeed = speed?.current ?? speed ?? 0
-    const intensity = THREE.MathUtils.clamp((currentSpeed - MAX_SPEED * 0.7) / (MAX_SPEED * 0.8), 0, 1)
-    material.opacity = THREE.MathUtils.lerp(material.opacity, intensity * 0.55, 0.05)
+    const boostThreshold = BOOST_SPEED * 0.6
+    const intensity = THREE.MathUtils.clamp((currentSpeed - boostThreshold) / (BOOST_SPEED - boostThreshold), 0, 1)
+    material.opacity = THREE.MathUtils.lerp(material.opacity, intensity * 0.4, 0.05)
     data.forEach((line, index) => {
       const offset = index * 6
       const radial = 1 + intensity * line.length

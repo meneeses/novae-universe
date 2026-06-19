@@ -20,6 +20,9 @@ import { NovaeStarObject } from './NovaeStarObject'
 import { Starfield } from './Starfield'
 import { NovaeSystem } from './NovaeSystem'
 import { NovaeSupernova } from './NovaeSupernova'
+import { SpacePhenomena } from './SpacePhenomena'
+import { NovaeWeaponProjectiles } from './NovaeWeaponProjectiles'
+import { MultiplayerPresence } from './MultiplayerPresence'
 
 const ENTER_THRESHOLD = 6
 const INITIAL_FLIGHT = {
@@ -28,7 +31,14 @@ const INITIAL_FLIGHT = {
   yaw: 0,
   isThrusting: false,
   isBoosting: false,
-  isBraking: false,
+  isEngineOff: false,
+  engineEnabled: true,
+  verticalInput: 0,
+}
+
+function getMultiplayerArea(dimension, galaxyMode, activeNovaeStarUsername) {
+  if (galaxyMode === 'system' && activeNovaeStarUsername) return `${activeNovaeStarUsername}_system`
+  return dimension === 'solar' ? 'solar_system' : 'dev_universe'
 }
 
 function SystemDetector({ mode, stars, novaeShipPosition, onEnter }) {
@@ -67,7 +77,14 @@ function SceneContent({
   onSelectObject,
   hasShield,
   dimension,
-  novaeGateTransit
+  novaeGateTransit,
+  onSpaceAlert,
+  onWeaponStatus,
+  localUsername,
+  localArea,
+  isInvisible,
+  onPresenceUpdate,
+  onPlayerPassBy
 }) {
   const novaeShipRef = useRef()
   const camera = useThree((state) => state.camera)
@@ -79,6 +96,7 @@ function SceneContent({
       <fog attach="fog" args={['#050818', 200, 600]} />
       <ambientLight intensity={mode === 'system' ? 0.45 : 1.1} color="#334466" />
       <Starfield />
+      <SpacePhenomena dimension={dimension} novaeShipPosition={novaeShip.position} onAlert={onSpaceAlert} />
 
       {mode === 'galaxy' ? (
         <>
@@ -178,8 +196,29 @@ function SceneContent({
         speed={novaeShip.speed}
         isThrusting={novaeShip.isThrusting}
         isBoosting={novaeShip.isBoosting}
-        isBraking={novaeShip.isBraking}
+        isEngineOff={novaeShip.isEngineOff}
+        verticalInput={novaeShip.verticalInput}
         hasShield={hasShield}
+      />
+      <NovaeWeaponProjectiles
+        fireSequence={novaeShip.fireSequence}
+        novaeShipPosition={novaeShip.position}
+        novaeShipForward={novaeShip.forward}
+        dimension={dimension}
+        stars={stars}
+        onWeaponStatus={onWeaponStatus}
+      />
+      <MultiplayerPresence
+        localUsername={localUsername}
+        localPosition={novaeShip.position}
+        localYaw={novaeShip.yaw}
+        speed={novaeShip.speed}
+        isThrusting={novaeShip.isThrusting}
+        isBoosting={novaeShip.isBoosting}
+        area={localArea}
+        isInvisible={isInvisible}
+        onPresenceUpdate={onPresenceUpdate}
+        onPassBy={onPlayerPassBy}
       />
       <DimensionTunnel transit={novaeGateTransit} />
       <SystemDetector
@@ -206,6 +245,8 @@ export function NovaeGalaxyScene() {
   const emptyZoneWarning = useNovaeStore((state) => state.emptyZoneWarning)
   const setLoginOpen = useNovaeStore((state) => state.setLoginOpen)
   const selectedObject = useNovaeStore((state) => state.selectedObject)
+  const isInvisible = useNovaeStore((state) => state.isInvisible)
+  const toggleInvisible = useNovaeStore((state) => state.toggleInvisible)
   const setSelectedObject = useNovaeStore((state) => state.setSelectedObject)
   const clearSelectedObject = useNovaeStore((state) => state.clearSelectedObject)
   const novaeShipController = useRef()
@@ -214,6 +255,13 @@ export function NovaeGalaxyScene() {
   const [arrival, setArrival] = useState(null)
   const [novaeGateTransit, setNovaeGateTransit] = useState(null)
   const [dimension, setDimension] = useState('solar')
+  const [spaceAlert, setSpaceAlert] = useState(null)
+  const [weaponStatus, setWeaponStatus] = useState({ cooldownProgress: 1, ready: true })
+  const [presence, setPresence] = useState({ playerCount: 0, nearbyPlayers: [], remotePlayers: [] })
+  const [passByNotice, setPassByNotice] = useState(null)
+  const alertTimeoutRef = useRef(null)
+  const weaponStatusRef = useRef({ blocks: 10, ready: true })
+  const passByTimeoutRef = useRef(null)
 
   const displayStars = useMemo(() => {
     const realUsernames = new Set(stars.map((star) => (star.github_username ?? star.username).toLowerCase()))
@@ -233,6 +281,8 @@ export function NovaeGalaxyScene() {
   }), [currentUser?.username, displayStars])
 
   const activeStar = galaxyStars.find((star) => star.username === activeNovaeStarUsername) ?? null
+  const localArea = getMultiplayerArea(dimension, galaxyMode, activeNovaeStarUsername)
+  const localUsername = currentUser?.username ?? currentUser?.github_username ?? null
 
   const handleFlightUpdate = useCallback((nextFlight) => {
     setFlight({
@@ -245,7 +295,9 @@ export function NovaeGalaxyScene() {
       yaw: nextFlight.yaw,
       isThrusting: nextFlight.isThrusting,
       isBoosting: nextFlight.isBoosting,
-      isBraking: nextFlight.isBraking,
+      isEngineOff: nextFlight.isEngineOff,
+      engineEnabled: nextFlight.engineEnabled,
+      verticalInput: nextFlight.verticalInput,
     })
   }, [])
 
@@ -310,6 +362,25 @@ export function NovaeGalaxyScene() {
     teleportTo([20, 0, 10], 'Solar System')
   }, [teleportTo])
 
+  const handleSpaceAlert = useCallback((message) => {
+    setSpaceAlert(message)
+    if (alertTimeoutRef.current) window.clearTimeout(alertTimeoutRef.current)
+    alertTimeoutRef.current = window.setTimeout(() => setSpaceAlert(null), 1400)
+  }, [])
+
+  const handleWeaponStatus = useCallback((status) => {
+    const blocks = Math.round((status.cooldownProgress ?? 1) * 10)
+    if (weaponStatusRef.current.blocks === blocks && weaponStatusRef.current.ready === status.ready) return
+    weaponStatusRef.current = { blocks, ready: status.ready }
+    setWeaponStatus(status)
+  }, [])
+
+  const handlePlayerPassBy = useCallback((player) => {
+    setPassByNotice(`● @${player.uid}`)
+    if (passByTimeoutRef.current) window.clearTimeout(passByTimeoutRef.current)
+    passByTimeoutRef.current = window.setTimeout(() => setPassByNotice(null), 2200)
+  }, [])
+
   return (
     <main className="space-screen">
       <Canvas
@@ -335,6 +406,13 @@ export function NovaeGalaxyScene() {
           hasShield={(currentUser?.followers ?? 0) > 1000}
           dimension={dimension}
           novaeGateTransit={novaeGateTransit}
+          onSpaceAlert={handleSpaceAlert}
+          onWeaponStatus={handleWeaponStatus}
+          localUsername={localUsername}
+          localArea={localArea}
+          isInvisible={isInvisible}
+          onPresenceUpdate={setPresence}
+          onPlayerPassBy={handlePlayerPassBy}
         />
       </Canvas>
 
@@ -344,11 +422,17 @@ export function NovaeGalaxyScene() {
         position={flight.position}
         isThrusting={flight.isThrusting}
         isBoosting={flight.isBoosting}
-        isBraking={flight.isBraking}
+        isEngineOff={flight.isEngineOff}
         isGuest={isGuest}
         galaxyMode={galaxyMode}
         activeNovaeStarUsername={activeNovaeStarUsername}
         dimension={dimension}
+        spaceAlert={spaceAlert}
+        engineEnabled={flight.engineEnabled}
+        weaponStatus={weaponStatus}
+        presence={presence}
+        isInvisible={isInvisible}
+        onToggleInvisible={toggleInvisible}
       />
       {galaxyMode === 'galaxy' && (
         <NovaeMap position={flight.position} rotation={flight.yaw} planets={galaxyStars} dimension={dimension} />
@@ -361,6 +445,8 @@ export function NovaeGalaxyScene() {
         />
       )}
       {arrival && <div className="arrival-banner">{arrival}</div>}
+      {passByNotice && <div className="pass-by-notice">{passByNotice}</div>}
+      <div className={`space-alert-vignette${spaceAlert ? ' space-alert-vignette--active' : ''}`} />
       <aside className="navigation-guide">
         <span>{dimension === 'solar' ? 'ORIGIN DIMENSION' : 'DEVELOPER GALAXY'}</span>
         <b>›</b>

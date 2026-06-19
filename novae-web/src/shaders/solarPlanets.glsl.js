@@ -1,10 +1,4 @@
-import { Html } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef, useState } from 'react'
-import * as THREE from 'three'
-import { Earth } from './Earth'
-
-const planetVertexShader = `
+export const planetVertexShader = `
   varying vec3 vPosition;
   varying vec3 vNormal;
   varying vec2 vUv;
@@ -16,7 +10,7 @@ const planetVertexShader = `
   }
 `
 
-const noiseGLSL = `
+export const noiseGLSL = `
   float hash(vec3 p) {
     return fract(sin(dot(p, vec3(17.1, 31.7, 47.3))) * 43758.5453);
   }
@@ -46,7 +40,36 @@ const noiseGLSL = `
   }
 `
 
-const planetFragments = {
+export const earthFragmentShader = `
+  uniform float uTime;
+  uniform float uSeed;
+  varying vec3 vPosition;
+  varying vec3 vNormal;
+  ${noiseGLSL}
+  void main() {
+    float continents = fbm(vPosition * 2.45 + vec3(uSeed * 0.01), 5);
+    float coast = smoothstep(0.49, 0.56, continents);
+    float mountains = fbm(vPosition * 7.0 + vec3(3.0), 3);
+    vec3 oceanDeep = vec3(0.04, 0.16, 0.48);
+    vec3 oceanShelf = vec3(0.08, 0.36, 0.72);
+    vec3 forest = vec3(0.12, 0.42, 0.18);
+    vec3 dryLand = vec3(0.47, 0.36, 0.19);
+    vec3 ice = vec3(0.92, 0.95, 0.96);
+    vec3 ocean = mix(oceanDeep, oceanShelf, fbm(vPosition * 6.0, 3));
+    vec3 land = mix(forest, dryLand, smoothstep(0.45, 0.82, mountains));
+    vec3 color = mix(ocean, land, coast);
+    float polar = smoothstep(0.74, 0.96, abs(vPosition.y));
+    color = mix(color, ice, polar * 0.85);
+    float clouds = fbm(vPosition * 5.0 + vec3(uTime * 0.025, 0.0, uTime * 0.012), 4);
+    float cloudMask = smoothstep(0.58, 0.78, clouds) * (1.0 - polar * 0.35);
+    color = mix(color, vec3(1.0), cloudMask * 0.45);
+    vec3 sunDir = normalize(vec3(1.0, 0.25, 0.45));
+    float diff = max(dot(normalize(vNormal), sunDir), 0.0);
+    gl_FragColor = vec4(color * (0.12 + diff * 0.88), 1.0);
+  }
+`
+
+export const solarPlanetFragments = {
   Mercury: `
     uniform float uTime;
     varying vec3 vPosition;
@@ -185,7 +208,7 @@ const planetFragments = {
   `
 }
 
-const ringVertexShader = `
+export const ringVertexShader = `
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -193,7 +216,7 @@ const ringVertexShader = `
   }
 `
 
-const saturnRingFragmentShader = `
+export const saturnRingFragmentShader = `
   uniform float uTime;
   varying vec2 vUv;
   ${noiseGLSL}
@@ -211,130 +234,3 @@ const saturnRingFragmentShader = `
     gl_FragColor = vec4(ringColor, alpha);
   }
 `
-
-function SaturnRings({ radius }) {
-  const materialRef = useRef()
-  const uniforms = useMemo(() => ({ uTime: { value: 0 } }), [])
-
-  useFrame(({ clock }) => {
-    materialRef.current.uniforms.uTime.value = clock.elapsedTime
-  })
-
-  return (
-    <mesh rotation={[Math.PI / 2, 0, 0.48]}>
-      <ringGeometry args={[radius * 1.12, radius * 2.55, 256]} />
-      <shaderMaterial
-        ref={materialRef}
-        uniforms={uniforms}
-        vertexShader={ringVertexShader}
-        fragmentShader={saturnRingFragmentShader}
-        transparent
-        side={THREE.DoubleSide}
-        depthWrite={false}
-      />
-    </mesh>
-  )
-}
-
-function SolarPlanetSurface({ data, meshRef }) {
-  const materialRef = useRef()
-  const uniforms = useMemo(() => ({ uTime: { value: 0 } }), [])
-  const fragmentShader = planetFragments[data.name]
-
-  useFrame(({ clock }) => {
-    if (materialRef.current) materialRef.current.uniforms.uTime.value = clock.elapsedTime
-  })
-
-  return (
-    <mesh ref={meshRef} rotation={data.name === 'Uranus' ? [0, 0, Math.PI * 0.54] : [0, 0, 0]}>
-      <sphereGeometry args={[data.radius, 48, 48]} />
-      {fragmentShader ? (
-        <shaderMaterial ref={materialRef} uniforms={uniforms} vertexShader={planetVertexShader} fragmentShader={fragmentShader} />
-      ) : (
-        <meshLambertMaterial color={data.color} emissive={data.color} emissiveIntensity={0.15} />
-      )}
-    </mesh>
-  )
-}
-
-function VenusAtmosphere({ radius }) {
-  return (
-    <mesh scale={1.12}>
-      <sphereGeometry args={[radius, 48, 48]} />
-      <meshBasicMaterial color="#ff9944" transparent opacity={0.32} depthWrite={false} side={THREE.BackSide} blending={THREE.AdditiveBlending} />
-    </mesh>
-  )
-}
-
-function UranusRings({ radius }) {
-  return (
-    <mesh rotation={[0, Math.PI / 2, Math.PI * 0.54]}>
-      <ringGeometry args={[radius * 1.35, radius * 1.75, 128]} />
-      <meshBasicMaterial color="#667077" transparent opacity={0.4} side={THREE.DoubleSide} depthWrite={false} />
-    </mesh>
-  )
-}
-
-export function SolarPlanet({ data, novaeShipPosition, onSelectObject }) {
-  const groupRef = useRef()
-  const meshRef = useRef()
-  const angle = useRef(data.name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) * 0.1)
-  const frame = useRef(0)
-  const [showLabel, setShowLabel] = useState(false)
-
-  useFrame((_, delta) => {
-    angle.current += data.orbitSpeed * 0.005 * delta * 60
-    groupRef.current.position.set(
-      Math.cos(angle.current) * data.orbitRadius,
-      0,
-      Math.sin(angle.current) * data.orbitRadius
-    )
-    if (meshRef.current) meshRef.current.rotation.y += data.rotationSpeed * delta * 60
-    frame.current += 1
-    if (frame.current % 15 === 0) setShowLabel(groupRef.current.position.distanceTo(novaeShipPosition.current) < 25)
-  })
-
-  return (
-    <group
-      ref={groupRef}
-      onClick={(event) => {
-        event.stopPropagation()
-        onSelectObject?.(data.isEarth ? {
-          type: 'earth',
-          name: 'Earth',
-          description: 'The origin point of your journey.',
-          orbitRadius: data.orbitRadius,
-          radius: data.radius,
-          color: data.color,
-          hasRings: data.hasRings,
-          moons: data.hasMoon ? 1 : 0
-        } : {
-          type: 'solar-planet',
-          name: data.name,
-          description: `${data.name} is a planet orbiting the Sun.`,
-          orbitRadius: data.orbitRadius,
-          radius: data.radius,
-          color: data.color,
-          hasRings: data.hasRings,
-          moons: data.hasMoon ? 1 : 0
-        })
-      }}
-      onPointerOver={() => { document.body.style.cursor = 'pointer' }}
-      onPointerOut={() => { document.body.style.cursor = 'default' }}
-    >
-      {data.isEarth ? (
-        <Earth data={data} />
-      ) : (
-        <SolarPlanetSurface data={data} meshRef={meshRef} />
-      )}
-      {data.name === 'Venus' && <VenusAtmosphere radius={data.radius} />}
-      {data.hasRings && <SaturnRings radius={data.radius} />}
-      {data.name === 'Uranus' && <UranusRings radius={data.radius} />}
-      {showLabel && (
-        <Html position={[0, data.radius * 1.8, 0]} center>
-          <span className="solar-label">{data.name}</span>
-        </Html>
-      )}
-    </group>
-  )
-}
